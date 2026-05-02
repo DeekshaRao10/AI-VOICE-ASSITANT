@@ -45,7 +45,7 @@ class LogRequest(BaseModel):
 # RESCHEDULE
 class RescheduleRequest(BaseModel):
     patient_name: str
-    doctor: str
+    doctor: str | None = None
     old_date: str
     new_date: str
 
@@ -118,17 +118,18 @@ def log_conversation(request: LogRequest, db: Session = Depends(get_db)):
 @app.delete("/appointments")
 def cancel_appointment(
     patient_name: str,
-    doctor: str,
     date: str,
+    doctor: str | None = None,
     db: Session = Depends(get_db)
 ):
-    result = db.execute(
-        select(Appointment).where(
-            Appointment.patient_name == patient_name,
-            Appointment.doctor == doctor,
-            Appointment.date == date
-        )
+    query = select(Appointment).where(
+        Appointment.patient_name == patient_name,
+        Appointment.date == date
     )
+    if doctor:
+        query = query.where(Appointment.doctor == doctor)
+        
+    result = db.execute(query)
 
     appointment = result.scalars().first()
 
@@ -142,16 +143,18 @@ def cancel_appointment(
 
 
 # ✅ 5. RESCHEDULE APPOINTMENT (PUT)
+
 @app.put("/appointments")
 def reschedule_appointment(request: RescheduleRequest, db: Session = Depends(get_db)):
-    result = db.execute(
-        select(Appointment).where(
-            Appointment.patient_name == request.patient_name,
-            Appointment.doctor == request.doctor,
-            Appointment.date == request.old_date
-        )
+    query = select(Appointment).where(
+        Appointment.patient_name.ilike(request.patient_name.strip()),
+        Appointment.date == request.old_date.strip()
     )
 
+    if request.doctor and request.doctor.strip():
+        query = query.where(Appointment.doctor == request.doctor.strip())
+
+    result = db.execute(query)
     appointment = result.scalars().first()
 
     if not appointment:
@@ -161,8 +164,7 @@ def reschedule_appointment(request: RescheduleRequest, db: Session = Depends(get
     db.commit()
 
     return {"message": "Appointment rescheduled"}
-
-
+    
 # =========================
 # ▶️ RUN SERVER
 # =========================

@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import sqlite3
-
+import io
 BASE_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(page_title="D.O.R.A AI", layout="wide")
@@ -54,8 +54,8 @@ elif menu == "Check Availability":
     st.header("👨‍⚕️ Check Availability")
 
     doctor = st.text_input("Doctor (optional)")
-    department = st.text_input("Department (optional)")
-    date = st.text_input("Date (optional)")
+    department = st.text_input("Department")
+    date = st.text_input("Date")
 
     if st.button("Check"):
         params = {
@@ -149,10 +149,24 @@ elif menu == "Admin Panel":
     # Download buttons
     st.subheader("Download Data")
 
-    if st.button("Download Appointments Excel"):
-        df_app.to_excel("appointments.xlsx", index=False)
-        st.success("Appointments exported")
+    # Appointments Excel
+    output_app = io.BytesIO()
+    df_app.to_excel(output_app, index=False)
+    
+    st.download_button(
+        label="Download Appointments Excel",
+        data=output_app.getvalue(),
+        file_name="appointments.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
-    if st.button("Download Conversations Excel"):
-        df_conv.to_excel("conversations.xlsx", index=False)
-        st.success("Conversations exported")
+    # Conversations Excel
+    output_conv = io.BytesIO()
+    df_conv.to_excel(output_conv, index=False)
+    
+    st.download_button(
+        label="Download Conversations Excel",
+        data=output_conv.getvalue(),
+        file_name="conversations.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
