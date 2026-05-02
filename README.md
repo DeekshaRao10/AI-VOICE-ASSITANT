@@ -231,7 +231,7 @@ D.O.R.A AI transforms hospital systems from **passive tools** into **intelligent
 
 ```md
 ![VAPI Setup](vapi/Vapi-Dashboard.png)
-![Conversation](assets/vapi/conversation.png)
+![Conversation](vapi/ai assistant)
 ```
 
 ---
