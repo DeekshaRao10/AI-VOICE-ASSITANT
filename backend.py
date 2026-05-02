@@ -15,7 +15,9 @@ app = FastAPI(title="D.O.R.A AI Backend")
 # =========================
 # 🧠 TRIAGE LOGIC
 # =========================
-def detect_priority(reason: str):
+def detect_priority(reason: str | None):
+    if not reason:
+        return "NORMAL"
     urgent_keywords = ["chest pain", "breathing", "bleeding", "accident"]
     for word in urgent_keywords:
         if word in reason.lower():
@@ -29,17 +31,17 @@ def detect_priority(reason: str):
 
 # BOOK
 class BookAppointmentRequest(BaseModel):
-    patient_name: str
-    department: str
-    reason: str
-    date: str
+    patient_name: str | None = "Unknown"
+    department: str | None = "General"
+    reason: str | None = "Not specified"
+    date: str | None = "TBD"
     doctor: str | None = None
 
 
 # LOG
 class LogRequest(BaseModel):
-    patient_name: str
-    transcript: str
+    patient_name: str | None = "Unknown"
+    transcript: str | None = ""
 
 
 # RESCHEDULE
@@ -48,6 +50,15 @@ class RescheduleRequest(BaseModel):
     doctor: str | None = None
     old_date: str
     new_date: str
+
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # =========================
