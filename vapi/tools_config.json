@@ -1,0 +1,69 @@
+{
+  "tools": [
+    {
+      "name": "book_appointment",
+      "method": "POST",
+      "endpoint": "/appointments",
+      "description": "Book a new appointment for a patient. Automatically assigns a doctor if not provided and detects priority based on symptoms.",
+      "required_fields": [
+        "patient_name",
+        "department",
+        "reason",
+        "date",
+        "phone"
+      ],
+      "optional_fields": [
+        "doctor"
+      ]
+    },
+    {
+      "name": "check_availability",
+      "method": "GET",
+      "endpoint": "/availability",
+      "description": "Check doctor availability by doctor name or department. Returns available slots and estimated wait time.",
+      "required_fields": [],
+      "optional_fields": [
+        "doctor",
+        "department"
+      ]
+    },
+    {
+      "name": "cancel_appointment",
+      "method": "DELETE",
+      "endpoint": "/appointments",
+      "description": "Cancel an existing appointment using patient name and date. Phone number is fetched from database.",
+      "required_fields": [
+        "patient_name",
+        "date"
+      ],
+      "optional_fields": [
+        "doctor"
+      ]
+    },
+    {
+      "name": "reschedule_appointment",
+      "method": "PUT",
+      "endpoint": "/appointments",
+      "description": "Reschedule an existing appointment to a new date. Phone number is fetched from database.",
+      "required_fields": [
+        "patient_name",
+        "old_date",
+        "new_date"
+      ],
+      "optional_fields": [
+        "doctor"
+      ]
+    },
+    {
+      "name": "log_conversation",
+      "method": "POST",
+      "endpoint": "/conversations",
+      "description": "Store the conversation transcript for analysis and monitoring.",
+      "required_fields": [
+        "patient_name",
+        "transcript"
+      ],
+      "optional_fields": []
+    }
+  ]
+}
