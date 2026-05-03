@@ -106,6 +106,135 @@ h1, h2, h3 {
     color: #0f172a;
     font-weight: 800;
 }
+
+/* ============================
+   🎉 POPUP MODAL STYLES
+   ============================ */
+.popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOverlay 0.3s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.popup-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 40px 44px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+    animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-align: center;
+    position: relative;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(60px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.popup-icon {
+    font-size: 64px;
+    margin-bottom: 8px;
+    animation: pop 0.4s 0.2s ease both;
+}
+
+@keyframes pop {
+    0%   { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+.popup-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 8px 0 4px;
+}
+
+.popup-subtitle {
+    font-size: 15px;
+    color: #64748b;
+    margin-bottom: 24px;
+}
+
+.popup-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    text-align: left;
+    border: 1px solid #e2e8f0;
+}
+
+.popup-detail-label {
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
+}
+
+.popup-detail-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.popup-badge-high {
+    display: inline-block;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.popup-badge-normal {
+    display: inline-block;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.popup-close-btn {
+    margin-top: 24px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 36px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.popup-close-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -213,9 +342,18 @@ if menu == "📅 Book Appointment":
 
                     if res.status_code == 200:
                         data = res.json()
-                        st.success("✅ Appointment Booked & SMS Sent!")
-                        st.info(f"👨‍⚕️ **Assigned Doctor:** {data.get('doctor')}")
-                        st.warning(f"🚨 **Triage Priority:** {data.get('priority')}")
+                        st.success("✅ Appointment Booked Successfully!")
+                        st.info(
+                            f"📲 **WhatsApp & SMS sent to** `+91-{phone}`\n\n"
+                            f"👨‍⚕️ **Assigned Doctor:** {data.get('doctor')}\n"
+                            f"🏷️ **Department:** {department}\n"
+                            f"📅 **Date:** {str(date)}\n"
+                            f"⏱️ **Est. Wait Time:** {data.get('wait_time')}"
+                        )
+                        if data.get('priority') == 'HIGH':
+                            st.warning("🚨 **HIGH PRIORITY** — Patient flagged as urgent. Please attend immediately.")
+                        else:
+                            st.success("🟢 Priority: NORMAL")
                     else:
                         st.error(f"❌ Error: {res.text}")
                 except Exception as e:
