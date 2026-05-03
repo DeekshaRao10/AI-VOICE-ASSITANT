@@ -383,7 +383,7 @@ elif menu == "📊 Admin Dashboard":
             data=output.getvalue(),
             file_name="appointments.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True # Some components might still use this if they are not updated yet, but we'll try width="stretch" where possible.
+            width="stretch"
         )
 
     except Exception as e:
