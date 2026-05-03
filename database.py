@@ -51,9 +51,8 @@ class Appointment(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
 
-# =========================
-# 🧾 CONVERSATION TABLE
-# =========================
+
+# ✅ Conversation Table
 class Conversation(Base):
     __tablename__ = "conversations"
 

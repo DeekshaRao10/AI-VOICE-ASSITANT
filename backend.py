@@ -5,7 +5,7 @@ from database import init_db, seed_data, Appointment, Conversation, Doctor, get_
 init_db()
 seed_data()
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -13,7 +13,6 @@ import pandas as pd
 import requests
 
 app = FastAPI(title="D.O.R.A AI Backend — MS Ramaiah Memorial Hospital")
-
 
 # =========================
 # 📊 EXCEL EXPORT
@@ -26,44 +25,78 @@ def export_appointments_to_excel(db: Session):
         data.append({
             "patient_id": a.id,
             "patient_name": a.patient_name,
+            "phone": a.phone,
             "reason": a.reason,
             "date": a.date,
             "department": a.department,
             "doctor": a.doctor
         })
 
-    pd.DataFrame(data).to_excel("appointments_summary.xlsx", index=False)
+    df = pd.DataFrame(data)
+    df.to_excel("appointments_summary.xlsx", index=False)
 
+def export_conversations_to_excel(db: Session):
+    convos = db.query(Conversation).all()
+
+    data = []
+    for c in convos:
+        data.append({
+            "patient_name": c.patient_name,
+            "transcript": c.transcript,
+            "timestamp": str(c.timestamp)
+        })
+
+    df = pd.DataFrame(data)
+    df.to_excel("conversation_logs.xlsx", index=False)
 
 # =========================
-# 📩 SMS FUNCTION (FIXED)
+# 📩 FAST2SMS FUNCTION
 # =========================
 def send_sms(phone, message):
     url = "https://www.fast2sms.com/dev/bulkV2"
 
-    params = {
-        "authorization": "YOUR_API_KEY",  # 🔴 PUT YOUR KEY
+    payload = {
         "sender_id": "FSTSMS",
         "message": message,
         "language": "english",
         "route": "q",
-        "numbers": phone
+        "numbers": phone,
+        "flash": "1"  # ⚡ Flash SMS to pop-up immediately on user's screen
+    }
+
+    headers = {
+        "authorization": "RdMt85eOcSg0mzYaTULQ4sNCup9wWXjIKxB6G7oJlqA23hnb1D2CbniU3DwayOsZL98GQjfW6xPAdhXu"  # 🔴 Replace with your Fast2SMS API Key
     }
 
     try:
-        response = requests.get(url, params=params)
-        print("SMS RESPONSE:", response.json())  # 🔥 DEBUG
+        response = requests.post(url, data=payload, headers=headers)
+        print("SMS RESPONSE:", response.json())
     except Exception as e:
         print("SMS Failed:", e)
 
+# =========================
+# 🏥 DEPARTMENTS
+# =========================
+VALID_DEPARTMENTS = [
+    "Accident & Emergency", "Cardiology", "Critical Care Medicine", 
+    "Dermatology & Cosmetology", "ENT", "Endocrinology", 
+    "General Medicine", "General Surgery", "Neurology", 
+    "Neurosurgery", "Obstetrics & Gynecology", "Orthopaedics", 
+    "Urology", "Vascular Surgery"
+]
 
 # =========================
 # 🧠 TRIAGE
 # =========================
 def detect_priority(reason: str):
-    urgent_keywords = ["chest pain", "breathing", "accident"]
-    return "HIGH" if any(k in reason.lower() for k in urgent_keywords) else "NORMAL"
-
+    urgent_keywords = [
+        "chest pain", "breathing", "bleeding", "accident",
+        "stroke", "unconscious", "seizure", "heart attack", "emergency", "trauma"
+    ]
+    for word in urgent_keywords:
+        if word in reason.lower():
+            return "HIGH"
+    return "NORMAL"
 
 # =========================
 # 👨‍⚕️ DOCTOR ASSIGNMENT
@@ -71,6 +104,12 @@ def detect_priority(reason: str):
 def assign_doctor(db, department):
     return db.query(Doctor).filter(Doctor.department == department).first()
 
+# =========================
+# ⏳ WAIT TIME
+# =========================
+def estimate_wait_time(db, doctor_name):
+    count = db.query(Appointment).filter(Appointment.doctor == doctor_name).count()
+    return count * 10
 
 # =========================
 # 📦 SCHEMAS
@@ -83,12 +122,12 @@ class BookAppointmentRequest(BaseModel):
     phone: str
     doctor: str | None = None
 
-
 class RescheduleRequest(BaseModel):
     patient_name: str
     old_date: str
     new_date: str
-
+    phone: str
+    doctor: str | None = None
 
 class LogRequest(BaseModel):
     patient_name: str
@@ -102,21 +141,29 @@ class LogRequest(BaseModel):
 # ✅ BOOK
 @app.post("/appointments")
 def book_appointment(request: BookAppointmentRequest, db: Session = Depends(get_db)):
+    if request.department not in VALID_DEPARTMENTS:
+        raise HTTPException(status_code=400, detail="Invalid department")
 
-    doctor = request.doctor or assign_doctor(db, request.department)
-    if not doctor:
-        raise HTTPException(status_code=404, detail="No doctor found")
+    priority = detect_priority(request.reason)
 
-    doctor_name = doctor if isinstance(doctor, str) else doctor.name
+    if request.doctor:
+        doctor_name = request.doctor
+    else:
+        doctor = assign_doctor(db, request.department)
+        if not doctor:
+            raise HTTPException(status_code=404, detail="No doctor available")
+        doctor_name = doctor.name
+
+    wait_time = estimate_wait_time(db, doctor_name)
 
     appointment = Appointment(
         patient_name=request.patient_name,
-        phone=request.phone,   # ✅ STORE PHONE
+        phone=request.phone,
         department=request.department,
         reason=request.reason,
         doctor=doctor_name,
         date=request.date,
-        priority=detect_priority(request.reason)
+        priority=priority
     )
 
     db.add(appointment)
@@ -124,60 +171,141 @@ def book_appointment(request: BookAppointmentRequest, db: Session = Depends(get_
 
     export_appointments_to_excel(db)
 
-    # 📩 SMS
-    send_sms(request.phone,
-             f"Hi {request.patient_name}, appointment confirmed with {doctor_name} on {request.date}")
+    message = f"Hello {request.patient_name}, your appointment with {doctor_name} on {request.date} is confirmed."
+    send_sms(request.phone, message)
 
-    return {"message": "Booked successfully"}
+    return {
+        "message": "Appointment booked",
+        "doctor": doctor_name,
+        "priority": priority,
+        "wait_time": f"{wait_time} minutes"
+    }
 
+# ✅ AVAILABILITY
+@app.get("/availability")
+def check_availability(
+    doctor: str | None = Query(default=None),
+    department: str | None = Query(default=None),
+    date: str | None = Query(default=None),
+    show_list: bool = Query(default=False, description="Set to True to see exact list"),
+    db: Session = Depends(get_db)
+):
+    if doctor:
+        doc = db.query(Doctor).filter(Doctor.name.ilike(f"%{doctor}%")).first()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        return {
+            "doctor": doc.name,
+            "department": doc.department,
+            "available_slots": doc.available_slots.split(",") if doc.available_slots else ["09:00 AM", "11:30 AM", "02:00 PM", "04:30 PM"]
+        }
+
+    query = db.query(Doctor)
+    if department and department != "Any":
+        query = query.filter(Doctor.department == department)
+    
+    doctors = query.all()
+    if not doctors:
+        return {"message": "No doctors found"}
+        
+    response = {
+        "department": department if department else "All",
+        "total_doctors_available": len(doctors)
+    }
+
+    if show_list:
+        response["available_doctors"] = [{"name": d.name, "slots": d.available_slots.split(",") if d.available_slots else []} for d in doctors]
+    else:
+        response["message"] = f"There are {len(doctors)} doctors available. Ask for names."
+
+    return response
+
+# ✅ DOCTORS LIST API
+@app.get("/doctors")
+def get_doctors(department: str | None = Query(default=None), show_list: bool = Query(default=False), db: Session = Depends(get_db)):
+    query = db.query(Doctor)
+    if department and department != "Any":
+        query = query.filter(Doctor.department == department)
+    doctors = query.all()
+    if not doctors:
+        return {"message": "No doctors found"}
+    
+    response = {"total": len(doctors)}
+    if show_list:
+        response["doctors"] = [{"name": d.name, "department": d.department} for d in doctors]
+    else:
+        response["message"] = "Ask specifically for their names."
+        
+    return response
 
 # ✅ CANCEL
 @app.delete("/appointments")
-def cancel_appointment(patient_name: str, date: str, db: Session = Depends(get_db)):
-
-    appointment = db.query(Appointment).filter(
+def cancel_appointment(patient_name: str, date: str, phone: str = None, db: Session = Depends(get_db)):
+    query = select(Appointment).where(
         Appointment.patient_name == patient_name,
         Appointment.date == date
-    ).first()
+    )
+
+    result = db.execute(query)
+    appointment = result.scalars().first()
 
     if not appointment:
         raise HTTPException(status_code=404, detail="No appointment found")
 
-    phone = appointment.phone  # ✅ FETCH FROM DB
+    phone_num = appointment.phone if appointment.phone else phone
 
     db.delete(appointment)
     db.commit()
 
     export_appointments_to_excel(db)
 
-    send_sms(phone, f"Hi {patient_name}, your appointment on {date} is cancelled")
+    if phone_num:
+        send_sms(phone_num, f"Hello {patient_name}, your appointment on {date} has been cancelled.")
 
     return {"message": "Cancelled"}
-
 
 # ✅ RESCHEDULE
 @app.put("/appointments")
 def reschedule_appointment(request: RescheduleRequest, db: Session = Depends(get_db)):
-
-    appointment = db.query(Appointment).filter(
+    query = select(Appointment).where(
         Appointment.patient_name == request.patient_name,
         Appointment.date == request.old_date
-    ).first()
+    )
+
+    result = db.execute(query)
+    appointment = result.scalars().first()
 
     if not appointment:
         raise HTTPException(status_code=404, detail="No appointment found")
 
-    phone = appointment.phone  # ✅ FETCH
+    phone_num = appointment.phone if appointment.phone else request.phone
 
     appointment.date = request.new_date
+    if request.doctor:
+        appointment.doctor = request.doctor
     db.commit()
 
     export_appointments_to_excel(db)
 
-    send_sms(phone,
-             f"Hi {request.patient_name}, appointment moved to {request.new_date}")
+    if phone_num:
+        send_sms(phone_num, f"Hello {request.patient_name}, your appointment is rescheduled to {request.new_date}.")
 
     return {"message": "Rescheduled"}
+
+# ✅ LOG
+@app.post("/conversations")
+def log_conversation(request: LogRequest, db: Session = Depends(get_db)):
+    convo = Conversation(
+        patient_name=request.patient_name,
+        transcript=request.transcript
+    )
+
+    db.add(convo)
+    db.commit()
+
+    export_conversations_to_excel(db)
+
+    return {"message": "Logged"}
 
 
 # =========================
