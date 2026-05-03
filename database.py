@@ -23,15 +23,15 @@ class Appointment(Base):
     date = Column(String, index=True)
     priority = Column(String, default="NORMAL")
     created_at = Column(DateTime, default=dt.datetime.utcnow)
- 
- 
- # ✅ Doctor Table
- class Doctor(Base):
-     __tablename__ = "doctors"
- 
-     id = Column(Integer, primary_key=True, index=True)
-     name = Column(String, unique=True, index=True)
-     department = Column(String, index=True)
+
+
+# ✅ Doctor Table
+class Doctor(Base):
+    __tablename__ = "doctors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    department = Column(String, index=True)
 
 
 # ✅ Conversation Table
@@ -47,22 +47,23 @@ class Conversation(Base):
 # ✅ Create Tables
 def init_db():
     Base.metadata.create_all(bind=engine)
-    
-    # Add Sample Doctors if they don't exist
+
+# ✅ Seed Data
+def seed_data():
     db = SessionLocal()
     try:
         if db.query(Doctor).count() == 0:
             sample_doctors = [
-                Doctor(name="Dr. John Smith", department="General Medicine"),
-                Doctor(name="Dr. Emily White", department="General Medicine"),
-                Doctor(name="Dr. Robert Carter", department="Cardiology"),
-                Doctor(name="Dr. Sarah Lee", department="Cardiology"),
-                Doctor(name="Dr. Michael Brown", department="Orthopedics"),
-                Doctor(name="Dr. Jessica Adams", department="Orthopedics"),
-                Doctor(name="Dr. David Wilson", department="Neurology"),
-                Doctor(name="Dr. Lisa Garcia", department="Neurology"),
-                Doctor(name="Dr. William Taylor", department="Pediatrics"),
-                Doctor(name="Dr. Sophia Martinez", department="Pediatrics"),
+                Doctor(name="Dr. Arjun Dev", department="Cardiology"),
+                Doctor(name="Dr. Priya Sharma", department="Cardiology"),
+                Doctor(name="Dr. Ravi Kumar", department="Neurology"),
+                Doctor(name="Dr. Sneha Rao", department="Neurology"),
+                Doctor(name="Dr. Vikram Singh", department="Orthopaedics"),
+                Doctor(name="Dr. Ananya Iyer", department="Orthopaedics"),
+                Doctor(name="Dr. Sanjay Gupta", department="General Medicine"),
+                Doctor(name="Dr. Meera Reddy", department="General Medicine"),
+                Doctor(name="Dr. Kishore Bhatt", department="Accident & Emergency"),
+                Doctor(name="Dr. Lakshmi Nair", department="Obstetrics & Gynecology"),
             ]
             db.add_all(sample_doctors)
             db.commit()
@@ -82,3 +83,4 @@ def get_db():
 # Run directly to create DB
 if __name__ == "__main__":
     init_db()
+    seed_data()

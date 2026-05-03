@@ -184,7 +184,14 @@ if menu == "📅 Book Appointment":
 
         with col1:
             patient_name = st.text_input("👤 Patient Name", placeholder="e.g. John Doe")
-            department = st.selectbox("🏥 Department", ["General Medicine", "Cardiology", "Orthopedics", "Neurology", "Pediatrics"])
+            department = st.selectbox("🏥 Department", [
+                "Accident & Emergency", "Cardiology", "Critical Care Medicine", 
+                "Dermatology & Cosmetology", "ENT", "Endocrinology", 
+                "General Medicine", "General Surgery", "Neurology", 
+                "Neurosurgery", "Obstetrics & Gynecology", "Orthopaedics", 
+                "Urology", "Vascular Surgery"
+            ])
+            phone = st.text_input("📞 Phone Number", placeholder="e.g. 9876543210")
 
         with col2:
             date = st.date_input("📅 Appointment Date", min_value=datetime.date.today())
@@ -205,6 +212,7 @@ if menu == "📅 Book Appointment":
                     "department": department,
                     "reason": reason,
                     "date": str(date),
+                    "phone": phone,
                     "doctor": doctor if doctor != "Select Doctor" else None
                 }
                 try:
@@ -232,7 +240,7 @@ elif menu == "👨‍⚕️ Check Availability":
         col1, col2 = st.columns(2)
 
         with col1:
-            department = st.selectbox("🏥 Department", ["Any", "General Medicine", "Cardiology", "Orthopedics", "Neurology", "Pediatrics"])
+            department = st.selectbox("🏥 Department", ["Any", "Accident & Emergency", "Cardiology", "Critical Care Medicine", "Dermatology & Cosmetology", "ENT", "Endocrinology", "General Medicine", "General Surgery", "Neurology", "Neurosurgery", "Obstetrics & Gynecology", "Orthopaedics", "Urology", "Vascular Surgery"])
         with col2:
             available_doctors = fetch_doctors(department)
             doctor = st.selectbox("👨‍⚕️ Doctor Name", ["Any"] + available_doctors)
@@ -273,6 +281,7 @@ elif menu == "🔄 Reschedule":
 
         with col1:
             patient_name = st.text_input("👤 Patient Name", placeholder="e.g. John Doe")
+            phone = st.text_input("📞 Phone Number", placeholder="e.g. 9876543210")
             doctor = st.text_input("👨‍⚕️ Doctor Name (Optional)", placeholder="e.g. Dr. Smith")
 
         with col2:
@@ -289,7 +298,8 @@ elif menu == "🔄 Reschedule":
                     "patient_name": patient_name,
                     "doctor": doctor if doctor else None,
                     "old_date": str(old_date),
-                    "new_date": str(new_date)
+                    "new_date": str(new_date),
+                    "phone": phone
                 }
                 try:
                     res = requests.put(f"{BASE_URL}/appointments", json=payload)
@@ -312,6 +322,7 @@ elif menu == "❌ Cancel Appointment":
 
         with col1:
             patient_name = st.text_input("👤 Patient Name", placeholder="e.g. John Doe")
+            phone = st.text_input("📞 Phone Number", placeholder="e.g. 9876543210")
         with col2:
             doctor = st.text_input("👨‍⚕️ Doctor Name (Optional)", placeholder="e.g. Dr. Smith")
 
@@ -326,7 +337,8 @@ elif menu == "❌ Cancel Appointment":
                 try:
                     params = {
                         "patient_name": patient_name,
-                        "date": str(date)
+                        "date": str(date),
+                        "phone": phone
                     }
                     if doctor: params["doctor"] = doctor
                     

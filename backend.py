@@ -111,6 +111,46 @@ def detect_priority(reason: str):
     return "NORMAL"
 
 
+# ✅ DOCTORS LIST API
+@app.get("/doctors")
+def get_doctors(department: str | None = Query(default=None), db: Session = Depends(get_db)):
+    query = db.query(Doctor)
+    if department and department != "Any":
+        query = query.filter(Doctor.department == department)
+    doctors = query.all()
+    return [{"name": d.name, "department": d.department} for d in doctors]
+
+
+# ✅ AVAILABILITY API
+@app.get("/availability")
+def check_availability(
+    doctor: str | None = Query(default=None),
+    department: str | None = Query(default=None),
+    date: str | None = Query(default=None),
+    db: Session = Depends(get_db)
+):
+    if doctor:
+        doc = db.query(Doctor).filter(Doctor.name.ilike(f"%{doctor}%")).first()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        return {
+            "doctor": doc.name,
+            "department": doc.department,
+            "available_slots": ["09:00 AM", "11:30 AM", "02:00 PM", "04:30 PM"]
+        }
+
+    query = db.query(Doctor)
+    if department and department != "Any":
+        query = query.filter(Doctor.department == department)
+    
+    doctors = query.all()
+    return {
+        "department": department if department else "All",
+        "available_doctors": [d.name for d in doctors],
+        "available_slots": ["10:00 AM", "12:00 PM", "03:00 PM"]
+    }
+
+
 # =========================
 # 👨‍⚕️ DOCTOR ASSIGNMENT
 # =========================
