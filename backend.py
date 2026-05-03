@@ -11,6 +11,8 @@ from sqlalchemy import select
 from pydantic import BaseModel
 import pandas as pd
 import requests
+import random
+import os
 
 app = FastAPI(title="D.O.R.A AI Backend — MS Ramaiah Memorial Hospital")
 
@@ -25,7 +27,6 @@ def export_appointments_to_excel(db: Session):
         data.append({
             "patient_id": a.id,
             "patient_name": a.patient_name,
-            "phone": a.phone,
             "reason": a.reason,
             "date": a.date,
             "department": a.department,
@@ -33,7 +34,17 @@ def export_appointments_to_excel(db: Session):
         })
 
     df = pd.DataFrame(data)
+    
+    # Save to project folder
     df.to_excel("appointments_summary.xlsx", index=False)
+    
+    # Save to System Downloads folder
+    try:
+        downloads_path = os.path.join(os.path.expanduser("~"), "Downloads", "appointments_summary.xlsx")
+        df.to_excel(downloads_path, index=False)
+        print(f"Excel saved to system files: {downloads_path}")
+    except Exception as e:
+        print(f"Failed to save to system files: {e}")
 
 def export_conversations_to_excel(db: Session):
     convos = db.query(Conversation).all()
@@ -47,7 +58,17 @@ def export_conversations_to_excel(db: Session):
         })
 
     df = pd.DataFrame(data)
+    
+    # Save to project folder
     df.to_excel("conversation_logs.xlsx", index=False)
+    
+    # Save to System Downloads folder
+    try:
+        downloads_path = os.path.join(os.path.expanduser("~"), "Downloads", "conversation_logs.xlsx")
+        df.to_excel(downloads_path, index=False)
+        print(f"Conversations saved to system files: {downloads_path}")
+    except Exception as e:
+        print(f"Failed to save to system files: {e}")
 
 # =========================
 # 📩 FAST2SMS FUNCTION
@@ -185,6 +206,23 @@ def send_system_popup(patient_name, doctor_name, department, date, priority):
     except Exception as e:
         print(f"System notification failed: {e}")
 
+def send_call_summary_popup(summary, caller_id="Unknown"):
+    """
+    Shows a popup when a Vapi call ends.
+    """
+    try:
+        from winotify import Notification, audio
+        toast = Notification(
+            app_id="D.O.R.A AI — Ramaiah Memorial Hospital",
+            title="📞 Call Completed & Logged",
+            msg=f"Caller: {caller_id}\nSummary: {summary[:100]}...",
+            duration="long",
+        )
+        toast.set_audio(audio.Mail, loop=False)
+        toast.show()
+    except Exception as e:
+        print(f"Call summary notification failed: {e}")
+
 # =========================
 # 🏥 DEPARTMENTS
 # =========================
@@ -213,7 +251,10 @@ def detect_priority(reason: str):
 # 👨‍⚕️ DOCTOR ASSIGNMENT
 # =========================
 def assign_doctor(db, department):
-    return db.query(Doctor).filter(Doctor.department == department).first()
+    doctors = db.query(Doctor).filter(Doctor.department == department).all()
+    if not doctors:
+        return None
+    return random.choice(doctors)
 
 # =========================
 # ⏳ WAIT TIME
@@ -230,20 +271,20 @@ class BookAppointmentRequest(BaseModel):
     department: str
     reason: str
     date: str
-    phone: str
+    phone: str | None = None   # Optional — voice assistant may not collect phone
     doctor: str | None = None
 
 class RescheduleRequest(BaseModel):
     patient_name: str
     old_date: str
     new_date: str
-    phone: str | None = None   # optional — fetched from DB if not provided
+    phone: str | None = None
     doctor: str | None = None
 
 class CancelRequest(BaseModel):
     patient_name: str
     date: str
-    phone: str | None = None   # optional — fetched from DB if not provided
+    phone: str | None = None
 
 class LogRequest(BaseModel):
     patient_name: str
@@ -279,7 +320,7 @@ def book_appointment(request: BookAppointmentRequest, db: Session = Depends(get_
 
     appointment = Appointment(
         patient_name=request.patient_name,
-        phone=request.phone,
+        phone=request.phone,  # may be None — that's fine
         department=request.department,
         reason=request.reason,
         doctor=doctor_name,
@@ -292,16 +333,17 @@ def book_appointment(request: BookAppointmentRequest, db: Session = Depends(get_
 
     export_appointments_to_excel(db)
 
-    # 📨 Send WhatsApp popup + SMS to patient's phone number
-    send_appointment_notifications(
-        phone=request.phone,
-        patient_name=request.patient_name,
-        doctor_name=doctor_name,
-        department=request.department,
-        date=request.date,
-        priority=priority,
-        wait_time=wait_time
-    )
+    # 📨 Only send notifications if a phone number was provided
+    if request.phone:
+        send_appointment_notifications(
+            phone=request.phone,
+            patient_name=request.patient_name,
+            doctor_name=doctor_name,
+            department=request.department,
+            date=request.date,
+            priority=priority,
+            wait_time=wait_time
+        )
 
     # 🔔 Show Windows desktop popup on this system
     send_system_popup(
@@ -314,6 +356,7 @@ def book_appointment(request: BookAppointmentRequest, db: Session = Depends(get_
 
     return {
         "message": "Appointment booked",
+        "appointment_id": appointment.id,
         "doctor": doctor_name,
         "priority": priority,
         "wait_time": f"{wait_time} minutes"
@@ -420,6 +463,7 @@ def cancel_appointment(
     db.commit()
     export_appointments_to_excel(db)
 
+    # Only send SMS if we have a real phone number
     if phone_num:
         send_sms(phone_num, f"Hello {actual_name}, your appointment on {p_date} has been cancelled. — Ramaiah Hospital")
 
@@ -458,6 +502,7 @@ def reschedule_appointment(request: RescheduleRequest, db: Session = Depends(get
     db.commit()
     export_appointments_to_excel(db)
 
+    # Only send SMS if we have a real phone number
     if phone_num:
         send_sms(
             phone_num,
@@ -494,6 +539,34 @@ def log_conversation(request: LogRequest, db: Session = Depends(get_db)):
     export_conversations_to_excel(db)
 
     return {"message": "Logged"}
+
+
+# ✅ VAPI WEBHOOK (Auto-triggered after call)
+@app.post("/webhook")
+async def vapi_webhook(request: dict, db: Session = Depends(get_db)):
+    """
+    Listens for Vapi events. Triggered automatically after a call ends.
+    """
+    message = request.get("message", {})
+    msg_type = message.get("type")
+
+    if msg_type == "end-of-call-report":
+        call_data = message.get("call", {})
+        summary = message.get("summary", "No summary provided.")
+        customer_phone = call_data.get("customer", {}).get("number", "Unknown")
+        
+        print(f"Vapi Webhook: Call Ended for {customer_phone}")
+        
+        # 1. Update Excel Files (System-wide)
+        export_appointments_to_excel(db)
+        export_conversations_to_excel(db)
+        
+        # 2. Show Summary Popup
+        send_call_summary_popup(summary, customer_phone)
+        
+        return {"status": "success", "action": "processed end-of-call report"}
+
+    return {"status": "ignored", "type": msg_type}
 
 
 # =========================

@@ -39,7 +39,7 @@ class Appointment(Base):
     id = Column(Integer, primary_key=True, index=True)
     patient_name = Column(String, index=True)
 
-    phone = Column(String)  # ✅ ADDED (VERY IMPORTANT)
+    phone = Column(String, nullable=True)  # Optional — not required from voice assistant
 
     department = Column(String)
     reason = Column(String)
@@ -78,20 +78,33 @@ def seed_data():
     if not db.query(Doctor).first():
         doctors = [
             Doctor(name="Dr. Aruna C Ramesh",        department="Accident & Emergency",      available_slots="9AM,11AM,2PM,4PM"),
+            Doctor(name="Dr. Kishore Kumar",         department="Accident & Emergency",      available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. Gurappa Shetty Gojanur", department="Cardiology",                available_slots="9AM,11AM,2PM,4PM"),
             Doctor(name="Dr. Anupama V Hegde",        department="Cardiology",                available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. Deepak T S",             department="Critical Care Medicine",    available_slots="9AM,11AM,2PM,4PM"),
+            Doctor(name="Dr. Sunita Rao",             department="Critical Care Medicine",    available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. T. K. Sumathy",          department="Dermatology & Cosmetology", available_slots="10AM,12PM,3PM"),
+            Doctor(name="Dr. Raghavendra S",          department="Dermatology & Cosmetology", available_slots="9AM,11AM,2PM,4PM"),
             Doctor(name="Dr. Chandrakiran C",         department="ENT",                       available_slots="9AM,11AM,2PM,4PM"),
+            Doctor(name="Dr. Naveen Kumar",           department="ENT",                       available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. Pramila Kalra",          department="Endocrinology",             available_slots="10AM,1PM,4PM"),
+            Doctor(name="Dr. Suresh Babu",            department="Endocrinology",             available_slots="9AM,11AM,2PM"),
             Doctor(name="Dr. Shaikh Mohammed Aslam S",department="General Medicine",          available_slots="9AM,11AM,2PM,4PM"),
+            Doctor(name="Dr. Meenakshi S",            department="General Medicine",          available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. Shashank G",             department="General Surgery",           available_slots="9AM,12PM,3PM"),
+            Doctor(name="Dr. Vinayaka S",             department="General Surgery",           available_slots="10AM,1PM,4PM"),
             Doctor(name="Dr. Mahendra J V",           department="Neurology",                 available_slots="10AM,1PM,4PM"),
+            Doctor(name="Dr. Rajeshwari S",           department="Neurology",                 available_slots="9AM,11AM,2PM"),
             Doctor(name="Dr. A. S. Hegde",            department="Neurosurgery",              available_slots="9AM,11AM,2PM"),
+            Doctor(name="Dr. Santosh Kumar",          department="Neurosurgery",              available_slots="10AM,1PM,4PM"),
             Doctor(name="Dr. Jyothi G S",             department="Obstetrics & Gynecology",   available_slots="9AM,11AM,2PM,4PM"),
+            Doctor(name="Dr. Rekha N",                department="Obstetrics & Gynecology",   available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. Ravikumar T V",          department="Orthopaedics",              available_slots="10AM,12PM,3PM"),
+            Doctor(name="Dr. Manjunath S",            department="Orthopaedics",              available_slots="9AM,11AM,2PM,4PM"),
             Doctor(name="Dr. Prasad Mylarappa",       department="Urology",                   available_slots="9AM,11AM,2PM,4PM"),
+            Doctor(name="Dr. Girish S",               department="Urology",                   available_slots="10AM,1PM,3PM"),
             Doctor(name="Dr. Sanjay C Desai",         department="Vascular Surgery",          available_slots="10AM,1PM,3PM"),
+            Doctor(name="Dr. Harish Kumar",           department="Vascular Surgery",          available_slots="9AM,11AM,2PM,4PM"),
         ]
 
         db.add_all(doctors)

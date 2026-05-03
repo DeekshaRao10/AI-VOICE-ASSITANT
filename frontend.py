@@ -311,29 +311,25 @@ if menu == "📅 Book Appointment":
         with col1:
             patient_name = st.text_input("👤 Patient Name")
             department = st.selectbox("🏥 Department", VALID_DEPARTMENTS)
-            phone = st.text_input("📱 Phone Number", placeholder="10-digit number")
 
         with col2:
             date = st.date_input("📅 Date", min_value=datetime.date.today())
-            available_doctors = fetch_doctors(department)
-            doctor = st.selectbox("👨‍⚕️ Select Doctor", ["Any (Auto-assign)"] + available_doctors)
+            doctor = "Any (Auto-assign)"
+            st.info("ℹ️ **Auto-assignment:** A specialist will be assigned to you.")
 
         reason = st.text_area("📝 Reason for Visit")
 
         submitted = st.form_submit_button("🚀 Book Appointment")
 
         if submitted:
-            if not patient_name or not reason or not phone:
+            if not patient_name or not reason:
                 st.error("⚠️ Please fill all required fields")
-            elif not phone.isdigit() or len(phone) != 10:
-                st.error("⚠️ Enter valid 10-digit phone number")
             else:
                 payload = {
                     "patient_name": patient_name,
                     "department": department,
                     "reason": reason,
                     "date": str(date),
-                    "phone": phone,
                     "doctor": doctor if doctor != "Any (Auto-assign)" else None
                 }
 
@@ -344,10 +340,10 @@ if menu == "📅 Book Appointment":
                         data = res.json()
                         st.success("✅ Appointment Booked Successfully!")
                         st.info(
-                            f"📲 **WhatsApp & SMS sent to** `+91-{phone}`\n\n"
-                            f"👨‍⚕️ **Assigned Doctor:** {data.get('doctor')}\n"
-                            f"🏷️ **Department:** {department}\n"
-                            f"📅 **Date:** {str(date)}\n"
+                            f"🆔 **Patient ID:** {data.get('appointment_id')} | "
+                            f"👨‍⚕️ **Assigned Doctor:** {data.get('doctor')} | "
+                            f"🏷️ **Department:** {department} | "
+                            f"📅 **Date:** {str(date)} | "
                             f"⏱️ **Est. Wait Time:** {data.get('wait_time')}"
                         )
                         if data.get('priority') == 'HIGH':
@@ -370,8 +366,9 @@ elif menu == "👨‍⚕️ Check Availability":
         with col1:
             department = st.selectbox("🏥 Department", ["Any"] + VALID_DEPARTMENTS)
         with col2:
-            available_doctors = fetch_doctors(department if department != "Any" else None)
-            doctor = st.selectbox("👨‍⚕️ Doctor Name", ["Any"] + available_doctors)
+            # available_doctors = fetch_doctors(department if department != "Any" else None)
+            # doctor = st.selectbox("👨‍⚕️ Doctor Name", ["Any"] + available_doctors)
+            doctor = "Any"
 
         date = st.date_input("📅 Date", min_value=datetime.date.today())
         submitted = st.form_submit_button("🔍 Check")
@@ -403,7 +400,6 @@ elif menu == "🔄 Reschedule":
 
     st.subheader("🔄 Reschedule Appointment")
     patient_name = st.text_input("👤 Patient Name")
-    phone = st.text_input("📞 Phone Number")
     old_date = st.date_input("📅 Old Date")
     new_date = st.date_input("🗓️ New Date")
 
@@ -411,8 +407,7 @@ elif menu == "🔄 Reschedule":
         payload = {
             "patient_name": patient_name,
             "old_date": str(old_date),
-            "new_date": str(new_date),
-            "phone": phone
+            "new_date": str(new_date)
         }
         try:
             res = requests.put(f"{BASE_URL}/appointments", json=payload)
@@ -430,11 +425,10 @@ elif menu == "❌ Cancel":
 
     st.subheader("❌ Cancel Appointment")
     patient_name = st.text_input("👤 Patient Name")
-    phone = st.text_input("📞 Phone Number")
     date = st.date_input("📅 Date")
 
     if st.button("❌ Cancel"):
-        params = {"patient_name": patient_name, "date": str(date), "phone": phone}
+        params = {"patient_name": patient_name, "date": str(date)}
         try:
             res = requests.delete(f"{BASE_URL}/appointments", params=params)
             if res.status_code == 200:
