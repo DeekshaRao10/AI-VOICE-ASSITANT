@@ -158,6 +158,19 @@ menu = st.sidebar.radio(
     "Navigation Menu",
     ["📅 Book Appointment", "👨‍⚕️ Check Availability", "🔄 Reschedule", "❌ Cancel Appointment", "📊 Admin Dashboard"]
 )
+ 
+ # =========================
+ # 🛠️ HELPERS
+ # =========================
+ def fetch_doctors(dept=None):
+     try:
+         params = {"department": dept} if dept and dept != "Any" else {}
+         res = requests.get(f"{BASE_URL}/doctors", params=params)
+         if res.status_code == 200:
+             return [d["name"] for d in res.json()]
+     except:
+         pass
+     return []
 
 # =========================
 # 📅 BOOK
@@ -175,7 +188,9 @@ if menu == "📅 Book Appointment":
 
         with col2:
             date = st.date_input("📅 Appointment Date", min_value=datetime.date.today())
-            doctor = st.text_input("👨‍⚕️ Preferred Doctor (Optional)", placeholder="e.g. Dr. Smith")
+            # Fetch doctors based on selected department
+            available_doctors = fetch_doctors(department)
+            doctor = st.selectbox("👨‍⚕️ Select Doctor", ["Select Doctor"] + available_doctors)
 
         reason = st.text_area("📝 Symptoms & Reason for Visit", placeholder="Briefly describe your symptoms...")
 
@@ -190,7 +205,7 @@ if menu == "📅 Book Appointment":
                     "department": department,
                     "reason": reason,
                     "date": str(date),
-                    "doctor": doctor if doctor else None
+                    "doctor": doctor if doctor != "Select Doctor" else None
                 }
                 try:
                     res = requests.post(f"{BASE_URL}/appointments", json=payload)
@@ -217,17 +232,18 @@ elif menu == "👨‍⚕️ Check Availability":
         col1, col2 = st.columns(2)
 
         with col1:
-            doctor = st.text_input("👨‍⚕️ Doctor Name", placeholder="e.g. Dr. Adams")
-        with col2:
             department = st.selectbox("🏥 Department", ["Any", "General Medicine", "Cardiology", "Orthopedics", "Neurology", "Pediatrics"])
+        with col2:
+            available_doctors = fetch_doctors(department)
+            doctor = st.selectbox("👨‍⚕️ Doctor Name", ["Any"] + available_doctors)
 
         date = st.date_input("📅 Date", min_value=datetime.date.today())
 
         submitted = st.form_submit_button("🔍 Check Availability", width="stretch")
 
         if submitted:
-            params = {"date": str(date), "show_list": True}
-            if doctor: params["doctor"] = doctor
+            params = {"date": str(date)}
+            if doctor != "Any": params["doctor"] = doctor
             if department != "Any": params["department"] = department
 
             try:
