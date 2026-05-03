@@ -5,6 +5,7 @@ import sqlite3
 import io
 import os
 import base64
+import datetime
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -173,12 +174,12 @@ if menu == "📅 Book Appointment":
             department = st.selectbox("🏥 Department", ["General Medicine", "Cardiology", "Orthopedics", "Neurology", "Pediatrics"])
 
         with col2:
-            date = st.date_input("📅 Appointment Date")
+            date = st.date_input("📅 Appointment Date", min_value=datetime.date.today())
             doctor = st.text_input("👨‍⚕️ Preferred Doctor (Optional)", placeholder="e.g. Dr. Smith")
 
         reason = st.text_area("📝 Symptoms & Reason for Visit", placeholder="Briefly describe your symptoms...")
 
-        submitted = st.form_submit_button("🚀 Confirm Booking", use_container_width=True)
+        submitted = st.form_submit_button("🚀 Confirm Booking", width="stretch")
 
         if submitted:
             if not patient_name or not reason:
@@ -220,9 +221,9 @@ elif menu == "👨‍⚕️ Check Availability":
         with col2:
             department = st.selectbox("🏥 Department", ["Any", "General Medicine", "Cardiology", "Orthopedics", "Neurology", "Pediatrics"])
 
-        date = st.date_input("📅 Date")
+        date = st.date_input("📅 Date", min_value=datetime.date.today())
 
-        submitted = st.form_submit_button("🔍 Check Availability", use_container_width=True)
+        submitted = st.form_submit_button("🔍 Check Availability", width="stretch")
 
         if submitted:
             params = {"date": str(date), "show_list": True}
@@ -259,10 +260,10 @@ elif menu == "🔄 Reschedule":
             doctor = st.text_input("👨‍⚕️ Doctor Name (Optional)", placeholder="e.g. Dr. Smith")
 
         with col2:
-            old_date = st.date_input("📅 Current Date")
-            new_date = st.date_input("🗓️ New Date")
+            old_date = st.date_input("📅 Current Date", min_value=datetime.date.today())
+            new_date = st.date_input("🗓️ New Date", min_value=datetime.date.today())
 
-        submitted = st.form_submit_button("🔄 Confirm Reschedule", use_container_width=True)
+        submitted = st.form_submit_button("🔄 Confirm Reschedule", width="stretch")
 
         if submitted:
             if not patient_name:
@@ -298,9 +299,9 @@ elif menu == "❌ Cancel Appointment":
         with col2:
             doctor = st.text_input("👨‍⚕️ Doctor Name (Optional)", placeholder="e.g. Dr. Smith")
 
-        date = st.date_input("📅 Date of Appointment")
+        date = st.date_input("📅 Date of Appointment", min_value=datetime.date.today())
 
-        submitted = st.form_submit_button("❌ Confirm Cancellation", use_container_width=True)
+        submitted = st.form_submit_button("❌ Confirm Cancellation", width="stretch")
 
         if submitted:
             if not patient_name:
@@ -366,10 +367,10 @@ elif menu == "📊 Admin Dashboard":
 
         # Data Tables
         st.markdown("### 🗂️ Appointment Records")
-        st.dataframe(df_app, use_container_width=True, hide_index=True)
+        st.dataframe(df_app, width="stretch", hide_index=True)
 
         with st.expander("Show Conversation Logs 💬"):
-            st.dataframe(df_conv, use_container_width=True, hide_index=True)
+            st.dataframe(df_conv, width="stretch", hide_index=True)
 
         st.divider()
         # Download Data
@@ -382,7 +383,7 @@ elif menu == "📊 Admin Dashboard":
             data=output.getvalue(),
             file_name="appointments.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            use_container_width=True # Some components might still use this if they are not updated yet, but we'll try width="stretch" where possible.
         )
 
     except Exception as e:
