@@ -225,7 +225,7 @@ elif menu == "👨‍⚕️ Check Availability":
         submitted = st.form_submit_button("🔍 Check Availability", use_container_width=True)
 
         if submitted:
-            params = {"date": str(date)}
+            params = {"date": str(date), "show_list": True}
             if doctor: params["doctor"] = doctor
             if department != "Any": params["department"] = department
 
@@ -238,7 +238,7 @@ elif menu == "👨‍⚕️ Check Availability":
                     if "available_slots" in data:
                         st.info(f"🕒 **Available Slots:** {', '.join(data['available_slots'])}")
                     if "available_doctors" in data:
-                        st.info(f"👨‍⚕️ **Available Doctors:** {', '.join(data['available_doctors'])}")
+                        st.info(f"👨‍⚕️ **Available Doctors:** {', '.join([d['name'] for d in data['available_doctors']])}")
                 else:
                     st.error("❌ Failed to fetch availability")
             except Exception as e:
@@ -341,7 +341,28 @@ elif menu == "📊 Admin Dashboard":
 
         st.divider()
 
+        # Visualizations
+        if not df_app.empty:
+            st.markdown("### 📈 Appointments Overview")
+            v_col1, v_col2 = st.columns(2)
+            
+            with v_col1:
+                st.markdown("**Appointments by Department**")
+                if "department" in df_app.columns:
+                    dept_counts = df_app["department"].value_counts().reset_index()
+                    dept_counts.columns = ["Department", "Count"]
+                    st.bar_chart(dept_counts.set_index("Department"))
 
+            with v_col2:
+                st.markdown("**Appointments by Date**")
+                if "date" in df_app.columns:
+                    date_counts = df_app["date"].value_counts().reset_index()
+                    date_counts.columns = ["Date", "Count"]
+                    # Sort dates
+                    date_counts = date_counts.sort_values(by="Date")
+                    st.line_chart(date_counts.set_index("Date"))
+
+        st.divider()
 
         # Data Tables
         st.markdown("### 🗂️ Appointment Records")
