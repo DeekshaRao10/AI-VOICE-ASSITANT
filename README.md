@@ -238,4 +238,4 @@ D.O.R.A AI transforms hospital systems from **passive tools** into **intelligent
 
 ## 📜 License
 
-This project is for academic and hackathon purposes.
+This project is built for academic and hackathon purposes.
